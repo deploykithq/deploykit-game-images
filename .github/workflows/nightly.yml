@@ -1,0 +1,37 @@
+name: Nightly
+
+# The Steam games download their dedicated servers on start: Valheim (~1 GB)
+# runs on a hosted runner every night. CS2 (~60 GB) does not fit a hosted
+# runner's disk, so it only runs when the CS2_RUNNER repository variable names
+# a self-hosted runner label with the space for it.
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  valheim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+      - run: docker buildx bake valheim --set '*.platform=linux/amd64' --set 'valheim.tags=dk-smoke:valheim' --load
+      - run: bash images/valheim/test/smoke.sh dk-smoke:valheim
+
+  cs2:
+    if: vars.CS2_RUNNER != ''
+    runs-on: ${{ vars.CS2_RUNNER }}
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+      - run: docker buildx bake cs2 --set '*.platform=linux/amd64' --set 'cs2.tags=dk-smoke:cs2' --load
+      - run: bash images/cs2/test/smoke.sh dk-smoke:cs2

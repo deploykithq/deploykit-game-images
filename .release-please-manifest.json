@@ -1,0 +1,9 @@
+{
+  "supervisor": "0.1.0",
+  "base": "0.1.0",
+  "images/terraria": "0.1.0",
+  "images/minecraft-java": "0.1.0",
+  "images/tmodloader": "0.1.0",
+  "images/valheim": "0.1.0",
+  "images/cs2": "0.1.0"
+}

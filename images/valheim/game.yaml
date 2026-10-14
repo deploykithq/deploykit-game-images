@@ -1,0 +1,14 @@
+game: valheim
+phases:
+  - name: install
+    run: [/opt/deploykit/hooks/install.sh]
+start: [/opt/deploykit/hooks/start.sh]
+# Valheim has no remote console and no stdin console.
+console:
+  adapter: none
+ready:
+  pattern: "Game server connected"
+stop:
+  # SIGINT makes the server save the world before it quits.
+  signal: SIGINT
+  timeout: 110s

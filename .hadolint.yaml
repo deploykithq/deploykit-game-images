@@ -1,0 +1,5 @@
+# Unpinned apt packages are deliberate: Debian removes superseded versions
+# from its mirrors, so pins break builds at the next point release, and these
+# images are rebuilt to pick up security updates.
+ignored:
+  - DL3008

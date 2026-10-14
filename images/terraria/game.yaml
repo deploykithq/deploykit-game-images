@@ -1,0 +1,17 @@
+game: terraria
+phases:
+  - name: install
+    run: [/opt/deploykit/hooks/install.sh]
+  - name: configure
+    run: [/opt/deploykit/hooks/configure.sh]
+start: [/opt/deploykit/hooks/start.sh]
+console:
+  adapter: stdin
+ready:
+  pattern: "Server started"
+stop:
+  # `exit` saves the world before quitting.
+  command: exit
+  timeout: 50s
+verbs:
+  save: [save]

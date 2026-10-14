@@ -1,0 +1,18 @@
+game: tmodloader
+phases:
+  - name: install
+    run: [/opt/deploykit/hooks/install.sh]
+  - name: configure
+    run: [/opt/deploykit/hooks/configure.sh]
+  - name: mods
+    run: [/opt/deploykit/hooks/mods.sh]
+start: [/opt/deploykit/hooks/start.sh]
+console:
+  adapter: stdin
+ready:
+  pattern: "Server started"
+stop:
+  command: exit
+  timeout: 55s
+verbs:
+  save: [save]

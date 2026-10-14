@@ -1,0 +1,20 @@
+game: cs2
+phases:
+  - name: install
+    run: [/opt/deploykit/hooks/install.sh]
+  - name: configure
+    run: [/opt/deploykit/hooks/configure.sh]
+start: [/opt/deploykit/hooks/start.sh]
+# CS2 does not read commands from stdin. The supervisor forwards console lines
+# over RCON to 127.0.0.1 on the game port (TCP), with a password generated at
+# every boot that never leaves the container.
+console:
+  adapter: rcon
+  rcon:
+    port: 27015
+    portEnv: DK_PORT_GAME
+ready:
+  pattern: "Host activate: Loading|GC Connection established"
+stop:
+  command: quit
+  timeout: 25s

@@ -1,0 +1,22 @@
+game: minecraft-java
+phases:
+  # install resolves the modpack first: a pack decides the Minecraft version
+  # and the loader the server is installed with.
+  - name: install
+    run: [/opt/deploykit/hooks/install.sh]
+  - name: configure
+    run: [/opt/deploykit/hooks/configure.sh]
+  - name: mods
+    run: [/opt/deploykit/hooks/mods.sh]
+start: [/opt/deploykit/hooks/start.sh]
+console:
+  adapter: stdin
+ready:
+  pattern: 'Done \([0-9.,]+s\)! For help'
+stop:
+  command: stop
+  timeout: 55s
+verbs:
+  save: [save-all flush]
+  save-off: [save-off]
+  save-on: [save-on]

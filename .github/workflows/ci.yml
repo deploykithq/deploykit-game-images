@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  supervisor:
+    name: Supervisor (go test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: supervisor
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: supervisor/go.mod
+          cache-dependency-path: supervisor/go.sum
+      - run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...
+
+  lint:
+    name: Lint (shellcheck, hadolint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: shellcheck
+        run: |
+          shellcheck -x -S warning -e SC1091 \
+            images/*/hooks/*.sh images/*/test/*.sh scripts/*.sh \
+            base/rootfs/opt/deploykit/*.sh base/rootfs/opt/deploykit/lib/*.sh base/steamcmd/*.sh
+      - name: hadolint
+        run: |
+          docker run --rm -i -v "$PWD:/w" -w /w hadolint/hadolint:latest-debian \
+            hadolint --failure-threshold warning base/Dockerfile base/steamcmd/Dockerfile images/*/Dockerfile
+
+  build:
+    name: Build all (amd64)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: bake
+        run: docker buildx bake --set '*.platform=linux/amd64'
+
+  smoke:
+    name: Smoke ${{ matrix.game }}
+    needs: [supervisor]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - game: terraria
+            target: terraria
+          - game: minecraft-java
+            target: minecraft-java25
+          - game: tmodloader
+            target: tmodloader
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+      - name: build
+        run: |
+          docker buildx bake ${{ matrix.target }} \
+            --set '*.platform=linux/amd64' --set '${{ matrix.target }}.tags=dk-smoke:${{ matrix.game }}' --load
+      - name: smoke
+        run: bash images/${{ matrix.game }}/test/smoke.sh dk-smoke:${{ matrix.game }}

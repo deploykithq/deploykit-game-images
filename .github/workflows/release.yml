@@ -1,0 +1,75 @@
+name: Release
+
+# release-please keeps one release PR for every component with unreleased
+# conventional commits. Merging it tags the releases; the publish job then
+# builds, pushes and signs exactly the images whose component was released
+# (a supervisor or base release republishes all of them).
+#
+# workflow_dispatch republishes components by hand, e.g. "all" after a base
+# image (debian, temurin) security update.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      components:
+        description: "Space-separated: all, supervisor, base, terraria, minecraft-java, tmodloader, valheim, cs2"
+        required: true
+        default: all
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      paths: ${{ steps.rp.outputs.paths_released }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    needs: [release-please]
+    if: >-
+      always() &&
+      (github.event_name == 'workflow_dispatch' ||
+       (needs.release-please.result == 'success' && needs.release-please.outputs.paths != '[]' && needs.release-please.outputs.paths != ''))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write # keyless cosign
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: sigstore/cosign-installer@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: components
+        id: comp
+        env:
+          PATHS: ${{ needs.release-please.outputs.paths }}
+          MANUAL: ${{ inputs.components }}
+        run: |
+          if [ -n "$MANUAL" ]; then
+            echo "list=$MANUAL" >> "$GITHUB_OUTPUT"
+          else
+            # "images/terraria" -> terraria, "base" -> base, "supervisor" -> supervisor
+            echo "list=$(jq -r '.[] | sub("^images/"; "")' <<<"$PATHS" | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
+          fi
+      - name: publish
+        env:
+          LIST: ${{ steps.comp.outputs.list }}
+        # Word-splitting LIST is intended; publish.sh rejects unknown names.
+        run: bash scripts/publish.sh $LIST
