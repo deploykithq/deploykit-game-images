@@ -46,8 +46,13 @@ for id in "${enabled[@]}"; do
     names+=("$name")
 done
 for tmod in "$modsdir"/*.tmod; do
-    [[ -f $tmod ]] && names+=("$(basename "$tmod" .tmod)")
+    if [[ -f $tmod ]]; then names+=("$(basename "$tmod" .tmod)"); fi
 done
 
-printf '%s\n' "${names[@]}" | grep -v '^$' | sort -u | jq -R . | jq -s . >"$modsdir/enabled.json"
+# No mods at all is the default: an empty list, not a failed grep.
+if ((${#names[@]} > 0)); then
+    printf '%s\n' "${names[@]}" | sort -u | jq -R . | jq -s . >"$modsdir/enabled.json"
+else
+    echo '[]' >"$modsdir/enabled.json"
+fi
 dk_log "enabled mods: $(jq -r 'join(", ")' "$modsdir/enabled.json")"
