@@ -38,13 +38,16 @@ export SUPERVISOR_VERSION
 SUPERVISOR_VERSION=$(version supervisor)
 
 targets=()
-sets=()
+overrides=()
+# Tags go into an override bake file as real lists: buildx takes the value of
+# `--set target.tags=a,b` as a single tag, which is not a valid reference.
 add() { # TARGET TAG...
     local t=$1
     shift
     targets+=("$t")
-    local IFS=,
-    sets+=(--set "$t.tags=$*")
+    local tags
+    tags=$(printf '"%s",' "$@")
+    overrides+=("\"$t\": {\"tags\": [${tags%,}], \"attest\": [\"type=sbom\", \"type=provenance,mode=max\"]}")
 }
 semver() { # IMAGE VERSION SUFFIX -> X.Y.Z X.Y X (with suffix)
     local v=$2
@@ -80,14 +83,22 @@ for g in "${games[@]}"; do
 done
 
 echo "supervisor $SUPERVISOR_VERSION; targets: ${targets[*]}"
+override=$(mktemp --suffix .json)
+trap 'rm -f "$override"' EXIT
+{
+    echo '{"target": {'
+    (IFS=,; echo "${overrides[*]}")
+    echo '}}'
+} >"$override"
+
+# DRY_RUN=1 prints the resolved plan (tags, attestations) without building.
 if [[ ${DRY_RUN:-0} == 1 ]]; then
-    printf '  %s\n' "${sets[@]}" | grep -v '^  --set$'
+    docker buildx bake -f docker-bake.hcl -f "$override" "${targets[@]}" --print
     exit 0
 fi
 
 meta=$(mktemp)
-docker buildx bake "${targets[@]}" "${sets[@]}" \
-    --set '*.attest=type=sbom' --set '*.attest=type=provenance,mode=max' \
+docker buildx bake -f docker-bake.hcl -f "$override" "${targets[@]}" \
     --push --metadata-file "$meta"
 
 # Keyless signature (GitHub OIDC) of every pushed digest.
