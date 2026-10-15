@@ -21,6 +21,7 @@ reused on every later start.
 | `ghcr.io/deploykithq/game-tmodloader` | Terraria with tModLoader | stdin | amd64 |
 | `ghcr.io/deploykithq/game-valheim` | Valheim | none | amd64 |
 | `ghcr.io/deploykithq/game-cs2` | Counter-Strike 2 | RCON (container-local) | amd64 |
+| `ghcr.io/deploykithq/game-eco` | Eco | RCON (container-local) | amd64 |
 
 ### Variables per image
 
@@ -60,6 +61,16 @@ are in `/data/worlds_local`.
 `SERVER_PASSWORD`, `VALIDATE`, `SKIP_UPDATE`. Your cvars go in `/data/cfg/*.cfg`
 (`server.cfg`, `gamemode_*_server.cfg`); they are linked into the game. The
 first start downloads about 60 GB.
+
+**eco** — `DK_PORT_GAME` [3000] (UDP), `DK_PORT_WEB` [3001] (TCP, the web
+map and stats), `SERVER_TOKEN` (from play.eco → Account → Server
+Authentication; without one the server starts offline), `SERVER_NAME`,
+`DESCRIPTION`, `PASSWORD`, `PUBLIC` [false], `VALIDATE`, `SKIP_UPDATE`. The
+world is `/data/Storage`, the configs `/data/Configs/*.eco` (the matching
+`*.eco.template` files link to the installed defaults) and mods
+`/data/Mods/UserCode`. The listed keys of `Network.eco` are rewritten every
+start; everything else in it, and every other config, is yours. Console
+lines are Eco's chat commands without the slash (`manage players`).
 
 ## Layout
 
