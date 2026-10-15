@@ -115,6 +115,7 @@ func (s *Supervisor) runGame() int {
 	s.Out.Logf("phase=start")
 
 	cmd := s.command(s.Cfg.Start)
+	cmd.Env = env.ForGame(s.Env)
 	var sender console.Sender = console.None{}
 	var gameStdin io.WriteCloser
 	if s.Cfg.Console.Adapter == config.AdapterStdin {

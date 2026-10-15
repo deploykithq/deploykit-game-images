@@ -20,7 +20,7 @@ reused on every later start.
 | `ghcr.io/deploykithq/game-minecraft-java:java{8,17,21,25}` | Minecraft: Java Edition — vanilla, Paper, Fabric, Forge, NeoForge | stdin | amd64, arm64 |
 | `ghcr.io/deploykithq/game-tmodloader` | Terraria with tModLoader | stdin | amd64 |
 | `ghcr.io/deploykithq/game-valheim` | Valheim | none | amd64 |
-| `ghcr.io/deploykithq/game-cs2` | Counter-Strike 2 | RCON (container-local) | amd64 |
+| `ghcr.io/deploykithq/game-cs2` | Counter-Strike 2 | RCON (game port, TCP) | amd64 |
 | `ghcr.io/deploykithq/game-eco` | Eco | RCON (container-local) | amd64 |
 | `ghcr.io/deploykithq/game-project-zomboid` | Project Zomboid (Build 42 / 41) | stdin | amd64 |
 
@@ -43,20 +43,24 @@ are kept.
 `DK_MODS_CURSEFORGE`, with required dependencies resolved, and go to `mods/`
 or `plugins/` (Paper). A modpack from Modrinth (`.mrpack`) or CurseForge
 decides the version and the loader. The Java tag must match the Minecraft
-version, and the server says which one is needed if it doesn't.
+version, and the server says which one is needed if it doesn't. A Forge or
+NeoForge installer without a published sha1 is not run unless
+`DK_VAR_ALLOW_UNVERIFIED=true`.
 
 **tmodloader** — `DK_GAME_VERSION` tag|latest [latest], `DK_PORT_GAME` [7777],
 the same world variables as terraria. Workshop mods come from
 `DK_MODS_STEAM` / `DK_MODS_STEAM_ENABLED`. Worlds are in
 `/data/tModLoader/Worlds`. A `.tmod` uploaded by hand into
-`/data/tModLoader/Mods` stays enabled.
+`/data/tModLoader/Mods` stays enabled. The download is checked against the
+sha256 GitHub publishes; if GitHub's API does not answer, the install stops
+unless `DK_VAR_ALLOW_UNVERIFIED=true`.
 
 **valheim** — `DK_PORT_GAME` [2456] (query port is game + 1),
 `SERVER_NAME`, `WORLD_NAME` [Dedicated], `SERVER_PASS` (≥ 5 characters, not
 part of the name), `SERVER_PUBLIC` [true], `VALIDATE`, `SKIP_UPDATE`. Worlds
 are in `/data/worlds_local`.
 
-**cs2** — `DK_PORT_GAME` [27015] (UDP game, TCP RCON), `SERVER_NAME`,
+**cs2** — `DK_PORT_GAME` [27015] (UDP game, TCP RCON: publish only the UDP side), `SERVER_NAME`,
 `GAME_MODE` competitive|casual|wingman|deathmatch, `MAP` [de_dust2],
 `MAX_PLAYERS` [10], `GSLT` (without one the server is LAN-only),
 `SERVER_PASSWORD`, `VALIDATE`, `SKIP_UPDATE`. Your cvars go in `/data/cfg/*.cfg`
@@ -122,10 +126,37 @@ signed with cosign (keyless). A `supervisor` or `base` release republishes
 every image. **Release → Run workflow** republishes by hand, for example `all`
 after an upstream security update.
 
-CI runs the Go tests, shellcheck and hadolint, builds everything, and smoke
+CI runs the Go tests, govulncheck, shellcheck and hadolint, scans the base
+images with Trivy, builds everything, and smoke
 tests Terraria, Minecraft and tModLoader on every pull request. Valheim runs
 nightly. CS2 needs about 60 GB of disk, so its smoke test only runs when the
 `CS2_RUNNER` repository variable names a self-hosted runner that has it.
+
+## Security
+
+- Game processes, hooks and mods run as uid 1000; only `dk-entrypoint`
+  starts as root, to prepare `/data`, `/server` and `/run/deploykit`.
+  As root it ignores `DK_CONFIG` and `DK_RUN_DIR`.
+- The game process does not see `DK_CURSEFORGE_API_KEY`, `DK_MODS_*` or
+  `DK_MODPACK_*`: only the install and mods phases need them.
+- Mods and modpacks are only downloaded from fixed hosts, always checked
+  against a hash, and never written outside the data directory or into
+  `/data/.deploykit`.
+- Values written into config files (`MOTD`, passwords, names) must not contain
+  line breaks.
+
+Images are signed with cosign (keyless, GitHub OIDC). Verify one, preferably
+pinned by digest, with:
+
+```sh
+cosign verify ghcr.io/deploykithq/game-terraria@sha256:<digest> \
+  --certificate-identity-regexp '^https://github.com/deploykithq/deploykit-game-images/\.github/workflows/release\.yml@' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+```
+
+The release workflow also rebuilds and republishes every image each week, so
+Debian, Java and .NET security updates reach the images without waiting for a
+release.
 
 ## License
 

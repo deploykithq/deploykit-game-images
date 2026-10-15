@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // PackState is what a modpack install leaves behind: which pack it was, the
@@ -50,7 +51,7 @@ func (c *Client) Modpack(o PackOptions, log io.Writer) error {
 		if prev.Pack != "" {
 			fmt.Fprintf(log, "modpack: removing %s\n", prev.Pack)
 			for _, f := range prev.Files {
-				removeFile(f, log)
+				removeWithin(o.Dir, f, log)
 			}
 		}
 		if err := writeJSON(o.State, &PackState{}); err != nil {
@@ -100,7 +101,7 @@ func (c *Client) Modpack(o PackOptions, log io.Writer) error {
 	}
 	for _, f := range prev.Files {
 		if !keep[f] {
-			removeFile(f, log)
+			removeWithin(o.Dir, f, log)
 		}
 	}
 	if err := writeJSON(o.State, next); err != nil {
@@ -206,7 +207,11 @@ func (c *Client) installMrpack(o PackOptions, log io.Writer) (*PackState, error)
 		return nil, err
 	}
 
+	if len(idx.Files) > maxResolvedMods {
+		return nil, fmt.Errorf("modpack lists %d files (at most %d)", len(idx.Files), maxResolvedMods)
+	}
 	state := &PackState{Pack: pack}
+	budget := int64(maxExtractBytes)
 	for _, file := range idx.Files {
 		if file.Env != nil && file.Env.Server == "unsupported" {
 			continue
@@ -224,7 +229,7 @@ func (c *Client) installMrpack(o PackOptions, log io.Writer) (*PackState, error)
 		state.Files = append(state.Files, dest)
 	}
 	for _, prefix := range []string{"overrides/", "server-overrides/"} {
-		if err := extractPrefix(zr, prefix, o.Dir); err != nil {
+		if err := extractPrefix(zr, prefix, o.Dir, &budget); err != nil {
 			return nil, err
 		}
 	}
@@ -295,6 +300,9 @@ func (c *Client) installCFPack(o PackOptions, log io.Writer) (*PackState, error)
 		return nil, err
 	}
 
+	if len(m.Files) > maxResolvedMods {
+		return nil, fmt.Errorf("modpack lists %d files (at most %d)", len(m.Files), maxResolvedMods)
+	}
 	ids := make([]int, 0, len(m.Files))
 	for _, mf := range m.Files {
 		if mf.Required {
@@ -321,6 +329,9 @@ func (c *Client) installCFPack(o PackOptions, log io.Writer) (*PackState, error)
 				fmt.Fprintf(log, "modpack: %v\n", err)
 				continue
 			}
+			if err := safeFilename(res.Filename); err != nil {
+				return nil, err
+			}
 			dest := filepath.Join(o.Dir, "mods", res.Filename)
 			if !fileMatches(dest, res.Hashes) {
 				if err := c.download(res.URL, dest, res.Hashes); err != nil {
@@ -334,7 +345,8 @@ func (c *Client) installCFPack(o PackOptions, log io.Writer) (*PackState, error)
 	if overrides == "" {
 		overrides = "overrides"
 	}
-	if err := extractPrefix(zr, strings.TrimSuffix(overrides, "/")+"/", o.Dir); err != nil {
+	budget := int64(maxExtractBytes)
+	if err := extractPrefix(zr, strings.TrimSuffix(overrides, "/")+"/", o.Dir, &budget); err != nil {
 		return nil, err
 	}
 
@@ -389,8 +401,9 @@ func readZipJSON(zr *zip.Reader, name string, v any) error {
 	return fmt.Errorf("modpack has no %s", name)
 }
 
-// extractPrefix writes every regular file under prefix into dir.
-func extractPrefix(zr *zip.Reader, prefix, dir string) error {
+// extractPrefix writes every regular file under prefix into dir, taking what
+// it writes from budget.
+func extractPrefix(zr *zip.Reader, prefix, dir string, budget *int64) error {
 	for _, f := range zr.File {
 		if !strings.HasPrefix(f.Name, prefix) || f.FileInfo().IsDir() {
 			continue
@@ -409,18 +422,22 @@ func extractPrefix(zr *zip.Reader, prefix, dir string) error {
 		if err != nil {
 			return err
 		}
-		out, err := os.Create(dest)
+		// O_NOFOLLOW: a symlink planted at dest is an error, not a redirect.
+		out, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC|syscall.O_NOFOLLOW, 0o644)
 		if err != nil {
 			rc.Close()
 			return err
 		}
-		_, err = io.Copy(out, io.LimitReader(rc, 1<<30))
+		n, err := io.Copy(out, io.LimitReader(rc, *budget+1))
 		rc.Close()
 		if cerr := out.Close(); err == nil {
 			err = cerr
 		}
 		if err != nil {
 			return err
+		}
+		if *budget -= n; *budget < 0 {
+			return fmt.Errorf("modpack overrides are larger than %d bytes", int64(maxExtractBytes))
 		}
 	}
 	return nil

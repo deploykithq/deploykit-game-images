@@ -19,6 +19,17 @@ import (
 
 const userAgent = "deploykithq/deploykit-game-images (dk-entrypoint)"
 
+// Limits that keep a hostile or broken source from filling the disk.
+const (
+	maxDownloadBytes = 2 << 30 // one file
+	maxExtractBytes  = 4 << 30 // every override of a pack together
+	maxResolvedMods  = 500     // a list plus its dependency tree
+)
+
+// reservedDirs are the image's own directories under the data directory: a
+// pack or a lock never writes or deletes anything there.
+var reservedDirs = map[string]bool{".deploykit": true, ".server": true}
+
 // Downloads are only ever fetched from these hosts — the same idea as the
 // fixed hosts of DeployKit's services/mod-sources/. Modrinth's own allowlist
 // for .mrpack files is cdn.modrinth.com, github.com, raw.githubusercontent.com
@@ -171,9 +182,14 @@ func (c *Client) download(raw, dest string, want Hashes) error {
 		return err
 	}
 	defer os.Remove(tmp.Name())
-	if _, err := io.Copy(io.MultiWriter(tmp, h), resp.Body); err != nil {
+	n, err := io.Copy(io.MultiWriter(tmp, h), io.LimitReader(resp.Body, maxDownloadBytes+1))
+	if err != nil {
 		tmp.Close()
 		return err
+	}
+	if n > maxDownloadBytes {
+		tmp.Close()
+		return fmt.Errorf("%s: larger than %d bytes", filepath.Base(dest), int64(maxDownloadBytes))
 	}
 	if err := tmp.Close(); err != nil {
 		return err
@@ -205,16 +221,60 @@ func fileMatches(path string, want Hashes) bool {
 	return hex.EncodeToString(h.Sum(nil)) == expected
 }
 
+// safeFilename accepts a plain file name from an API: no directories, no
+// hidden or reserved names.
+func safeFilename(name string) error {
+	if name == "" || strings.ContainsAny(name, `/\`) || strings.ContainsRune(name, 0) || strings.HasPrefix(name, ".") {
+		return fmt.Errorf("refusing file name %q", name)
+	}
+	return nil
+}
+
 // safeJoin joins a pack-supplied relative path under base, refusing anything
-// that would escape it.
+// that would escape it, land in one of the image's own directories, or pass
+// through a symlink that already exists under base (os.Create would follow
+// it out of base).
 func safeJoin(base, rel string) (string, error) {
 	rel = filepath.FromSlash(rel)
-	if rel == "" || filepath.IsAbs(rel) || strings.HasPrefix(rel, `\`) {
+	if rel == "" || filepath.IsAbs(rel) || strings.HasPrefix(rel, `\`) || strings.ContainsRune(rel, 0) {
 		return "", fmt.Errorf("unsafe path %q", rel)
 	}
 	clean := filepath.Clean(rel)
 	if clean == "." || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("unsafe path %q", rel)
 	}
+	parts := strings.Split(clean, string(filepath.Separator))
+	if reservedDirs[parts[0]] {
+		return "", fmt.Errorf("unsafe path %q", rel)
+	}
+	p := base
+	for _, part := range parts {
+		p = filepath.Join(p, part)
+		info, err := os.Lstat(p)
+		if errors.Is(err, os.ErrNotExist) {
+			break
+		}
+		if err != nil {
+			return "", err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return "", fmt.Errorf("unsafe path %q: %s is a symlink", rel, p)
+		}
+	}
 	return filepath.Join(base, clean), nil
+}
+
+// within reports whether path is strictly inside base and outside the image's
+// own directories. Paths read back from a lock or state file are checked with
+// it before anything is deleted: those files live on the data volume and are
+// not to be trusted.
+func within(base, path string) bool {
+	if !filepath.IsAbs(path) {
+		return false
+	}
+	rel, err := filepath.Rel(filepath.Clean(base), filepath.Clean(path))
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return false
+	}
+	return !reservedDirs[strings.Split(rel, string(filepath.Separator))[0]]
 }

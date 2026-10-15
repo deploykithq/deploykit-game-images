@@ -90,6 +90,9 @@ func (c *Client) resolveModrinth(refs []Ref, loaders []string, gameVersion strin
 	seen := map[string]bool{}
 	queue := append([]Ref(nil), refs...)
 	for len(queue) > 0 {
+		if len(out) >= maxResolvedMods {
+			return nil, fmt.Errorf("more than %d mods with dependencies", maxResolvedMods)
+		}
 		ref := queue[0]
 		queue = queue[1:]
 		var (

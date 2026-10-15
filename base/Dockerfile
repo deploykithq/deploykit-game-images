@@ -10,7 +10,7 @@
 
 ARG FROM=debian:bookworm-slim
 
-FROM --platform=$BUILDPLATFORM golang:1.23-bookworm AS supervisor
+FROM --platform=$BUILDPLATFORM golang:1.27-bookworm AS supervisor
 WORKDIR /src
 COPY supervisor/go.mod supervisor/go.sum ./
 RUN go mod download

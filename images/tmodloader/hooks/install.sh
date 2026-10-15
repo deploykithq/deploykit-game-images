@@ -19,11 +19,22 @@ if [[ $(dk_stamp tmodloader-version) == "$tag" && -f $dir/tModLoader.dll ]]; the
 fi
 
 dk_log "installing tmodloader $tag"
-# GitHub publishes a sha256 digest for release assets; verify against it when
-# the API answers (it is rate limited per IP).
-digest=$(dk_get "https://api.github.com/repos/tModLoader/tModLoader/releases/tags/$tag" 2>/dev/null |
-    jq -r '.assets[] | select(.name == "tModLoader.zip") | .digest // empty' || true)
-[[ -n $digest ]] || dk_log "warning: no published digest for $tag; downloading without hash verification"
+# GitHub publishes a sha256 digest for release assets. The API is rate limited
+# per IP, so it is asked a few times; without a digest the install stops
+# unless DK_VAR_ALLOW_UNVERIFIED=true.
+digest=
+for attempt in 1 2 3; do
+    digest=$(dk_get "https://api.github.com/repos/tModLoader/tModLoader/releases/tags/$tag" 2>/dev/null |
+        jq -r '.assets[] | select(.name == "tModLoader.zip") | .digest // empty' || true)
+    [[ -n $digest ]] && break
+    dk_log "no published digest for $tag yet (attempt $attempt)"
+    if ((attempt < 3)); then sleep $((attempt * 10)); fi
+done
+if [[ -z $digest ]]; then
+    [[ $(dk_bool "${DK_VAR_ALLOW_UNVERIFIED:-false}") == true ]] ||
+        dk_die "could not get the sha256 of tModLoader $tag from GitHub; retry later or set DK_VAR_ALLOW_UNVERIFIED=true"
+    dk_log "warning: downloading tModLoader $tag without hash verification (DK_VAR_ALLOW_UNVERIFIED)"
+fi
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

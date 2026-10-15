@@ -159,3 +159,23 @@ func Lookup(environ []string, key string) string {
 	}
 	return ""
 }
+
+// installOnlyPrefixes are the inputs only the install and mods phases use. The game
+// process does not get them: every mod runs inside it, and none has any
+// business reading the owner's CurseForge API key.
+var installOnlyPrefixes = []string{"DK_CURSEFORGE_API_KEY=", "DK_MODS_", "DK_MODPACK_"}
+
+// ForGame returns environ without the install-only inputs.
+func ForGame(environ []string) []string {
+	out := make([]string, 0, len(environ))
+next:
+	for _, kv := range environ {
+		for _, p := range installOnlyPrefixes {
+			if strings.HasPrefix(kv, p) {
+				continue next
+			}
+		}
+		out = append(out, kv)
+	}
+	return out
+}

@@ -6,6 +6,9 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
     bash ca-certificates coreutils curl jq procps tzdata unzip
+# The base image tag is only refreshed now and then: take every security fix
+# published since, so a rebuild is a patched image.
+apt-get upgrade -y
 rm -rf /var/lib/apt/lists/*
 
 # Ubuntu-based images (eclipse-temurin) ship an `ubuntu` user on 1000.

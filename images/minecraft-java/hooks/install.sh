@@ -109,9 +109,16 @@ install_fabric() {
 }
 
 # run_installer URL SHA1 — Forge/NeoForge installers write libraries/ and
-# their launch files into the data directory.
+# their launch files into the data directory. Without the maven .sha1 the
+# installer is not run, unless DK_VAR_ALLOW_UNVERIFIED=true.
 run_installer() {
     local tmp
+    if [[ ! $2 =~ ^[0-9a-fA-F]{40}$ ]]; then
+        [[ $(dk_bool "${DK_VAR_ALLOW_UNVERIFIED:-false}") == true ]] ||
+            dk_die "no sha1 published for $1; retry later or set DK_VAR_ALLOW_UNVERIFIED=true"
+        dk_log "warning: running the installer without hash verification (DK_VAR_ALLOW_UNVERIFIED)"
+        set -- "$1" ""
+    fi
     tmp=$(mktemp -d)
     dk_fetch "$1" "$tmp/installer.jar" "${2:+sha1:$2}"
     (cd "$data" && java -jar "$tmp/installer.jar" --installServer "$data" >"$state/installer.log" 2>&1) || {

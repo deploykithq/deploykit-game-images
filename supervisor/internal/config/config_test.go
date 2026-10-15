@@ -49,6 +49,8 @@ func TestParseRejects(t *testing.T) {
 		"no start":        strings.Replace(valid, "start: [/opt/deploykit/hooks/start.sh]", "", 1),
 		"rcon no port":    strings.Replace(valid, "adapter: stdin", "adapter: rcon", 1),
 		"root user":       valid + "user: {uid: 0, gid: 5}\n",
+		"data dir /etc":   valid + "dataDir: /etc\n",
+		"server dir /usr": valid + "serverDir: /usr/local/bin\n",
 		"command no cons": strings.Replace(strings.Replace(valid, "adapter: stdin", "adapter: none", 1), "verbs:\n  save: [save]\n", "", 1),
 	}
 	for name, doc := range cases {

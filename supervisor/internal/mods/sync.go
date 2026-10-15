@@ -85,8 +85,8 @@ func (c *Client) Sync(o SyncOptions, log io.Writer) error {
 
 	next := &Lock{Entries: map[string]LockEntry{}}
 	for _, r := range want {
-		if strings.ContainsAny(r.Filename, "/\\") || r.Filename == "" || strings.HasPrefix(r.Filename, ".") {
-			return fmt.Errorf("refusing file name %q", r.Filename)
+		if err := safeFilename(r.Filename); err != nil {
+			return err
 		}
 		dest := filepath.Join(o.Dir, r.Filename)
 		prev, had := lock.Entries[r.Key]
@@ -99,7 +99,7 @@ func (c *Client) Sync(o SyncOptions, log io.Writer) error {
 			return fmt.Errorf("%s: %w", r.Key, err)
 		}
 		if had && prev.Path != dest {
-			removeFile(prev.Path, log)
+			removeWithin(o.Dir, prev.Path, log)
 		}
 		next.Entries[r.Key] = LockEntry{Path: dest, Version: r.Version, SHA1: r.Hashes.SHA1, SHA512: r.Hashes.SHA512}
 	}
@@ -113,9 +113,20 @@ func (c *Client) Sync(o SyncOptions, log io.Writer) error {
 	sort.Strings(stale)
 	for _, key := range stale {
 		fmt.Fprintf(log, "mods: removing %s\n", key)
-		removeFile(lock.Entries[key].Path, log)
+		removeWithin(o.Dir, lock.Entries[key].Path, log)
 	}
 	return writeJSON(o.State, next)
+}
+
+// removeWithin deletes a path read back from a lock or state file, but only
+// when it lies inside base: those files are on the data volume and may have
+// been edited.
+func removeWithin(base, path string, log io.Writer) {
+	if !within(base, path) {
+		fmt.Fprintf(log, "mods: not removing %s: outside %s\n", path, base)
+		return
+	}
+	removeFile(path, log)
 }
 
 func removeFile(path string, log io.Writer) {
