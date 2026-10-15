@@ -1,11 +1,11 @@
 {
-  "supervisor": "0.1.0",
-  "base": "0.2.0",
+  "supervisor": "0.2.0",
+  "base": "0.3.0",
   "images/terraria": "0.1.0",
-  "images/minecraft-java": "0.1.0",
-  "images/tmodloader": "0.1.1",
+  "images/minecraft-java": "0.2.0",
+  "images/tmodloader": "0.2.0",
   "images/valheim": "0.1.0",
-  "images/cs2": "0.1.0",
+  "images/cs2": "0.2.0",
   "images/eco": "1.0.0",
   "images/project-zomboid": "0.1.0"
 }
