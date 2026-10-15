@@ -1,7 +1,7 @@
 name: Nightly
 
-# The Steam games download their dedicated servers on start: Valheim (~1 GB)
-# and Eco (~500 MB) run on a hosted runner every night. CS2 (~60 GB) does not
+# The Steam games download their dedicated servers on start: Valheim (~1 GB),
+# Eco (~500 MB) and Project Zomboid (~3 GB) run on a hosted runner every night. CS2 (~60 GB) does not
 # fit a hosted runner's disk, so it only runs when the CS2_RUNNER repository
 # variable names a self-hosted runner label with the space for it.
 
@@ -33,6 +33,16 @@ jobs:
           driver: docker
       - run: docker buildx bake eco --set '*.platform=linux/amd64' --set 'eco.tags=dk-smoke:eco' --load
       - run: bash images/eco/test/smoke.sh dk-smoke:eco
+
+  project-zomboid:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
+      - run: docker buildx bake project-zomboid --set '*.platform=linux/amd64' --set 'project-zomboid.tags=dk-smoke:project-zomboid' --load
+      - run: bash images/project-zomboid/test/smoke.sh dk-smoke:project-zomboid
 
   cs2:
     if: vars.CS2_RUNNER != ''

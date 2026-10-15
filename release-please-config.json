@@ -25,6 +25,7 @@
     "images/tmodloader": { "component": "tmodloader" },
     "images/valheim": { "component": "valheim" },
     "images/cs2": { "component": "cs2" },
-    "images/eco": { "component": "eco" }
+    "images/eco": { "component": "eco" },
+    "images/project-zomboid": { "component": "project-zomboid", "initial-version": "0.1.0" }
   }
 }

@@ -1,0 +1,20 @@
+game: project-zomboid
+phases:
+  - name: install
+    run: [/opt/deploykit/hooks/install.sh]
+  - name: configure
+    run: [/opt/deploykit/hooks/configure.sh]
+  - name: mods
+    run: [/opt/deploykit/hooks/mods.sh]
+start: [/opt/deploykit/hooks/start.sh]
+# The server reads its admin commands from stdin (`save`, `players`, `servermsg "Hello"`); RCON stays off.
+console:
+  adapter: stdin
+ready:
+  pattern: "SERVER STARTED"
+stop:
+  # `quit` saves the world and closes the server; a large world takes a while.
+  command: quit
+  timeout: 80s
+verbs:
+  save: [save]

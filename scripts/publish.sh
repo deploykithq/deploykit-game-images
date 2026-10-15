@@ -4,8 +4,9 @@
 #   scripts/publish.sh COMPONENT...
 #
 # Components: supervisor, base, terraria, minecraft-java, tmodloader, valheim,
-# cs2, eco, or all. A supervisor or base release republishes every image under
-# its current version, because every image is built on the base.
+# cs2, eco, project-zomboid, or all. A supervisor or base release republishes
+# every image under its current version, because every image is built on the
+# base.
 #
 # Tags for an image at version X.Y.Z:  X.Y.Z  X.Y  X  latest
 # Minecraft, per Java variant N:       X.Y.Z-javaN  X.Y-javaN  X-javaN  javaN
@@ -17,7 +18,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 REGISTRY=${REGISTRY:-ghcr.io/deploykithq}
-games=(terraria minecraft-java tmodloader valheim cs2 eco)
+games=(terraria minecraft-java tmodloader valheim cs2 eco project-zomboid)
 javas=(8 17 21 25)
 
 [[ $# -gt 0 ]] || { echo "usage: publish.sh COMPONENT..." >&2; exit 2; }
@@ -28,7 +29,7 @@ for c in "$@"; do
             want[bases]=1
             for g in "${games[@]}"; do want[$g]=1; done
             ;;
-        terraria | minecraft-java | tmodloader | valheim | cs2 | eco) want[$c]=1 ;;
+        terraria | minecraft-java | tmodloader | valheim | cs2 | eco | project-zomboid) want[$c]=1 ;;
         *) echo "unknown component: $c" >&2; exit 2 ;;
     esac
 done

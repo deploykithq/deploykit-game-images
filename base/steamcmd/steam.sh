@@ -3,16 +3,18 @@
 
 STEAMCMD=/opt/steamcmd/steamcmd.sh
 
-# dk_steam_app_update APP_ID DIR [validate] — install or update a dedicated
-# server anonymously. SteamCMD fails transiently (state 0x202, 0x602…), so it
-# is retried a few times before giving up.
+# dk_steam_app_update APP_ID DIR [validate] [BRANCH] — install or update a
+# dedicated server anonymously, from BRANCH when one is given (empty: the
+# default "public" branch). SteamCMD fails transiently (state 0x202, 0x602…),
+# so it is retried a few times before giving up.
 dk_steam_app_update() {
-    local app=$1 dir=$2 validate=${3:-}
+    local app=$1 dir=$2 validate=${3:-} branch=${4:-}
     local attempt
+    [[ -z $branch || $branch =~ ^[A-Za-z0-9._-]+$ ]] || dk_die "invalid Steam branch: $branch"
     mkdir -p "$dir"
     for attempt in 1 2 3; do
         if "$STEAMCMD" +force_install_dir "$dir" +login anonymous \
-            +app_update "$app" ${validate:+validate} +quit; then
+            +app_update "$app" ${branch:+-beta "$branch"} ${validate:+validate} +quit; then
             return 0
         fi
         dk_log "steamcmd app_update $app failed (attempt $attempt)"
