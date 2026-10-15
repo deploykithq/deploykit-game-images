@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/deploykithq/deploykit-game-images/compare/tmodloader-v0.2.0...tmodloader-v0.2.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* authenticate tModLoader digest lookup ([#13](https://github.com/deploykithq/deploykit-game-images/issues/13)) ([9423f8d](https://github.com/deploykithq/deploykit-game-images/commit/9423f8dcc9b272f9e7f908cac6e6daad3130b43b))
+
 ## [0.2.0](https://github.com/deploykithq/deploykit-game-images/compare/tmodloader-v0.1.1...tmodloader-v0.2.0) (2026-10-15)
 
 
