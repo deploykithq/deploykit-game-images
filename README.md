@@ -22,6 +22,7 @@ reused on every later start.
 | `ghcr.io/deploykithq/game-valheim` | Valheim | none | amd64 |
 | `ghcr.io/deploykithq/game-cs2` | Counter-Strike 2 | RCON (container-local) | amd64 |
 | `ghcr.io/deploykithq/game-eco` | Eco | RCON (container-local) | amd64 |
+| `ghcr.io/deploykithq/game-project-zomboid` | Project Zomboid (Build 42 / 41) | stdin | amd64 |
 
 ### Variables per image
 
@@ -71,6 +72,17 @@ world is `/data/Storage`, the configs `/data/Configs/*.eco` (the matching
 `/data/Mods/UserCode`. The listed keys of `Network.eco` are rewritten every
 start; everything else in it, and every other config, is yours. Console
 lines are Eco's chat commands without the slash (`manage players`).
+
+**project-zomboid** — `DK_GAME_VERSION` b42|b41 [b42] (b41 is Steam's
+`legacy41` branch), `DK_PORT_GAME` [16261] and `DK_PORT_DIRECT` [16262] (both
+UDP), `SERVER_NAME`, `ADMIN_PASSWORD` (**required**; the `admin` user's
+password, applied when the player database is created), `SERVER_PASS`,
+`MAX_PLAYERS` [16], `PVP` [true], `PUBLIC` [false], `VALIDATE`, `SKIP_UPDATE`.
+Workshop mods come from `DK_MODS_STEAM` / `DK_MODS_STEAM_ENABLED`. Everything
+lives under `/data/Zomboid` (the save is always `servertest`): settings in
+`Server/servertest.ini`, the world in `Saves/Multiplayer/servertest`, players
+in `db/servertest.db`. The listed keys of the `.ini`, plus `WorkshopItems` and
+`Mods`, are rewritten every start; everything else is yours.
 
 ## Layout
 

@@ -28,7 +28,7 @@ group "bases" {
 }
 
 group "games" {
-  targets = ["terraria", "minecraft-java", "tmodloader", "valheim", "cs2", "eco"]
+  targets = ["terraria", "minecraft-java", "tmodloader", "valheim", "cs2", "eco", "project-zomboid"]
 }
 
 target "_common" {
@@ -126,4 +126,13 @@ target "eco" {
   args       = { BASE = "dk-base" }
   platforms  = ["linux/amd64"]
   tags       = ["${REGISTRY}/game-eco:edge"]
+}
+
+target "project-zomboid" {
+  inherits   = ["_common"]
+  dockerfile = "images/project-zomboid/Dockerfile"
+  contexts   = { dk-base = "target:base-steamcmd" }
+  args       = { BASE = "dk-base" }
+  platforms  = ["linux/amd64"]
+  tags       = ["${REGISTRY}/game-project-zomboid:edge"]
 }
