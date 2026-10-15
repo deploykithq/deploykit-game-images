@@ -50,11 +50,24 @@ func main() {
 	os.Exit(run())
 }
 
+const defaultRunDir = "/run/deploykit"
+
+// runDir and configPath honour DK_RUN_DIR and DK_CONFIG only when not
+// running as root (tests, local runs). As root the supervisor chowns the run
+// directory to the game user before dropping privileges, and the HEALTHCHECK
+// runs as root: neither may be steered by the environment.
 func runDir() string {
-	if d := os.Getenv("DK_RUN_DIR"); d != "" {
+	if d := os.Getenv("DK_RUN_DIR"); d != "" && os.Geteuid() != 0 {
 		return d
 	}
-	return "/run/deploykit"
+	return defaultRunDir
+}
+
+func configPath() string {
+	if p := os.Getenv("DK_CONFIG"); p != "" && os.Geteuid() != 0 {
+		return p
+	}
+	return config.DefaultPath
 }
 
 func run() int {
@@ -64,11 +77,7 @@ func run() int {
 	sigs := make(chan os.Signal, 2)
 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
 
-	path := os.Getenv("DK_CONFIG")
-	if path == "" {
-		path = config.DefaultPath
-	}
-	cfg, err := config.Load(path)
+	cfg, err := config.Load(configPath())
 	if err != nil {
 		out.Logf("fatal: %v", err)
 		return 1

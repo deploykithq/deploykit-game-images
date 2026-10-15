@@ -69,3 +69,16 @@ func TestRCONPasswordIsAlwaysGenerated(t *testing.T) {
 		t.Fatal("password must not survive without rcon")
 	}
 }
+
+func TestForGameDropsInstallOnlyInputs(t *testing.T) {
+	got := ForGame([]string{
+		"DK_CURSEFORGE_API_KEY=secret", "DK_MODS_MODRINTH=sodium", "DK_MODPACK_SOURCE=modrinth",
+		"DK_VAR_MOTD=hi", "DK_HEAP_MB=1024", "PATH=/usr/bin",
+	})
+	if Lookup(got, "DK_CURSEFORGE_API_KEY") != "" || Lookup(got, "DK_MODS_MODRINTH") != "" || Lookup(got, "DK_MODPACK_SOURCE") != "" {
+		t.Fatalf("install-only input kept: %v", got)
+	}
+	if Lookup(got, "DK_VAR_MOTD") != "hi" || Lookup(got, "DK_HEAP_MB") != "1024" || Lookup(got, "PATH") != "/usr/bin" {
+		t.Fatalf("game input dropped: %v", got)
+	}
+}

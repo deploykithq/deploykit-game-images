@@ -1,0 +1,25 @@
+version: 2
+updates:
+  # Actions are pinned to commit SHAs; Dependabot keeps the SHAs (and the
+  # version comment next to them) current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+  - package-ecosystem: gomod
+    directory: /supervisor
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: fix
+      include: scope
+  # The Go toolchain image the supervisor is built with.
+  - package-ecosystem: docker
+    directory: /base
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: fix
+      include: scope

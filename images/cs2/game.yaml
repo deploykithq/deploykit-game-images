@@ -7,7 +7,8 @@ phases:
 start: [/opt/deploykit/hooks/start.sh]
 # CS2 does not read commands from stdin. The supervisor forwards console lines
 # over RCON to 127.0.0.1 on the game port (TCP), with a password generated at
-# every boot that never leaves the container.
+# every boot that never leaves the container. CS2 listens for RCON on every
+# interface: publish only the UDP game port, never the TCP side.
 console:
   adapter: rcon
   rcon:

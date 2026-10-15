@@ -20,9 +20,11 @@ dk_bool() {
 }
 
 # dk_set_prop FILE KEY VALUE — upsert KEY=VALUE in a key=value file, keeping
-# every other line (and the user's edits) as they are.
+# every other line (and the user's edits) as they are. A line break in VALUE
+# would add keys of its own, so it is refused.
 dk_set_prop() {
     local file=$1 key=$2 value=$3
+    [[ $value != *[$'\n\r']* ]] || dk_die "$key: line breaks are not allowed"
     [[ -f $file ]] || : >"$file"
     K="$key" V="$value" awk '
         BEGIN { k = ENVIRON["K"]; v = ENVIRON["V"]; done = 0 }

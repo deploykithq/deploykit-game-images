@@ -7,6 +7,7 @@ import (
 	"crypto/sha512"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -265,12 +266,140 @@ func TestMrpackRejectsTraversal(t *testing.T) {
 }
 
 func TestSafeJoin(t *testing.T) {
-	for _, bad := range []string{"", "/abs", "..", "../x", "a/../../x"} {
+	for _, bad := range []string{"", "/abs", "..", "../x", "a/../../x", ".deploykit/launch.env", "./.server/x", "a\x00b"} {
 		if _, err := safeJoin("/data", bad); err == nil {
 			t.Errorf("%q accepted", bad)
 		}
 	}
 	if p, err := safeJoin("/data", "mods/a.jar"); err != nil || p != filepath.Join("/data", "mods", "a.jar") {
 		t.Fatalf("p=%s err=%v", p, err)
+	}
+}
+
+func TestSafeJoinRefusesExistingSymlink(t *testing.T) {
+	dir, outside := t.TempDir(), t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(dir, "config")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := safeJoin(dir, "config/a.toml"); err == nil || !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("err = %v", err)
+	}
+}
+
+func TestSafeFilename(t *testing.T) {
+	for _, bad := range []string{"", "../x.jar", "a/b.jar", `a\b.jar`, ".hidden.jar", "a\x00.jar"} {
+		if safeFilename(bad) == nil {
+			t.Errorf("%q accepted", bad)
+		}
+	}
+	if err := safeFilename("sodium-1.jar"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWithin(t *testing.T) {
+	for path, want := range map[string]bool{
+		"/data/mods/a.jar":            true,
+		"/data":                       false,
+		"/data/../etc/passwd":         false,
+		"/etc/passwd":                 false,
+		"/data/.deploykit/launch.env": false,
+		"mods/a.jar":                  false,
+	} {
+		if got := within("/data", path); got != want {
+			t.Errorf("within(/data, %s) = %v", path, got)
+		}
+	}
+}
+
+func TestSyncDoesNotRemoveOutsideDir(t *testing.T) {
+	dir, outside := t.TempDir(), t.TempDir()
+	victim := filepath.Join(outside, "world.dat")
+	_ = os.WriteFile(victim, []byte("precious"), 0o644)
+	state := filepath.Join(dir, "lock.json")
+	_ = writeJSON(state, &Lock{Entries: map[string]LockEntry{"modrinth:x": {Path: victim}}})
+
+	var log bytes.Buffer
+	c := NewClient()
+	if err := c.Sync(SyncOptions{Source: "modrinth", Dir: filepath.Join(dir, "mods"), State: state}, &log); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(victim); err != nil {
+		t.Fatal("a path outside the mods directory was deleted")
+	}
+	if !strings.Contains(log.String(), "not removing") {
+		t.Fatalf("log = %q", log.String())
+	}
+}
+
+func TestMrpackOverridesCannotReachState(t *testing.T) {
+	api := newFakeAPI(t)
+	index := map[string]any{"dependencies": map[string]string{"minecraft": "1.21.1"}}
+	pack := buildMrpack(t, index, map[string]string{"overrides/.deploykit/launch.env": "MC_TYPE=$(id)"})
+	api.addVersion("evil", "e1", "evil.mrpack", pack)
+	dir := t.TempDir()
+	err := api.client().Modpack(PackOptions{Source: "modrinth", Project: "evil", Dir: dir, State: filepath.Join(dir, "s"), EnvOut: filepath.Join(dir, "e")}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "unsafe path") {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".deploykit", "launch.env")); err == nil {
+		t.Fatal("override written into .deploykit")
+	}
+}
+
+func TestMrpackOverridesDoNotFollowSymlinks(t *testing.T) {
+	api := newFakeAPI(t)
+	index := map[string]any{"dependencies": map[string]string{"minecraft": "1.21.1"}}
+	api.addVersion("evil", "e1", "evil.mrpack", buildMrpack(t, index, map[string]string{"overrides/config/a.toml": "x"}))
+	dir, outside := t.TempDir(), t.TempDir()
+	_ = os.Symlink(outside, filepath.Join(dir, "config"))
+	err := api.client().Modpack(PackOptions{Source: "modrinth", Project: "evil", Dir: dir, State: filepath.Join(dir, "s"), EnvOut: filepath.Join(dir, "e")}, io.Discard)
+	if err == nil {
+		t.Fatal("override written through a symlink")
+	}
+	if _, err := os.Stat(filepath.Join(outside, "a.toml")); err == nil {
+		t.Fatal("file created outside the data directory")
+	}
+}
+
+func TestCurseForgePackRejectsTraversalFileName(t *testing.T) {
+	mod := []byte("evil jar")
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+	w, _ := zw.Create("manifest.json")
+	_, _ = io.WriteString(w, `{"minecraft":{"version":"1.21.1","modLoaders":[{"id":"forge-52.0.1","primary":true}]},"files":[{"projectID":1,"fileID":2,"required":true}]}`)
+	_ = zw.Close()
+	pack := buf.Bytes()
+
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/mods/10/files/20":
+			_, _ = fmt.Fprintf(w, `{"data":{"id":20,"modId":10,"fileName":"pack.zip","downloadUrl":%q,"hashes":[{"value":%q,"algo":1}]}}`,
+				srv.URL+"/files/pack.zip", sha1hex(pack))
+		case "/v1/mods/files":
+			_, _ = fmt.Fprintf(w, `{"data":[{"id":2,"modId":1,"fileName":"../../evil.jar","downloadUrl":%q,"hashes":[{"value":%q,"algo":1}]}]}`,
+				srv.URL+"/files/evil.jar", sha1hex(mod))
+		case "/files/pack.zip":
+			_, _ = w.Write(pack)
+		case "/files/evil.jar":
+			_, _ = w.Write(mod)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := NewClient()
+	c.CurseForgeAPI, c.CurseForgeKey = srv.URL, "key"
+	c.AllowHost = func(string) bool { return true }
+	root := t.TempDir()
+	dir := filepath.Join(root, "data")
+	err := c.Modpack(PackOptions{Source: "curseforge", Project: "10", Version: "20", Dir: dir, State: filepath.Join(dir, "s"), EnvOut: filepath.Join(dir, "e")}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "refusing file name") {
+		t.Fatalf("err = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "evil.jar")); err == nil {
+		t.Fatal("file written outside the mods directory")
 	}
 }

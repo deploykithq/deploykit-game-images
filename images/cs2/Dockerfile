@@ -20,4 +20,4 @@ LABEL io.deploykit.game="cs2" \
       org.opencontainers.image.title="DeployKit Counter-Strike 2 server" \
       org.opencontainers.image.source="https://github.com/deploykithq/deploykit-game-images" \
       org.opencontainers.image.licenses="MIT"
-EXPOSE 27015/udp 27015/tcp
+EXPOSE 27015/udp

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 
@@ -26,6 +27,11 @@ const (
 
 // Verbs a game.yaml may translate. "status" and "stop" are built in.
 var translatableVerbs = map[string]bool{"save": true, "save-off": true, "save-on": true}
+
+// AllowedDirs are the only directories dataDir and serverDir may name. The
+// supervisor hands them to the game user recursively while it is still root,
+// so a game.yaml must never be able to point that at /etc or /usr.
+var AllowedDirs = map[string]bool{"/data": true, "/server": true}
 
 var stopSignals = map[string]bool{
 	"SIGINT": true, "SIGTERM": true, "SIGQUIT": true, "SIGHUP": true, "SIGUSR1": true, "SIGUSR2": true,
@@ -131,6 +137,11 @@ func (c *Config) validate() error {
 	}
 	if c.User.UID <= 0 || c.User.GID <= 0 {
 		return fmt.Errorf("user must not be root")
+	}
+	for name, dir := range map[string]string{"dataDir": c.DataDir, "serverDir": c.ServerDir} {
+		if !AllowedDirs[filepath.Clean(dir)] {
+			return fmt.Errorf("%s must be /data or /server, got %q", name, dir)
+		}
 	}
 	if len(c.Start) == 0 {
 		return fmt.Errorf("start is required")
