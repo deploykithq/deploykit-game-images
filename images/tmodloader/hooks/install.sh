@@ -24,7 +24,7 @@ dk_log "installing tmodloader $tag"
 # unless DK_VAR_ALLOW_UNVERIFIED=true.
 digest=
 for attempt in 1 2 3; do
-    digest=$(dk_get "https://api.github.com/repos/tModLoader/tModLoader/releases/tags/$tag" 2>/dev/null |
+    digest=$(dk_github_api "repos/tModLoader/tModLoader/releases/tags/$tag" 2>/dev/null |
         jq -r '.assets[] | select(.name == "tModLoader.zip") | .digest // empty' || true)
     [[ -n $digest ]] && break
     dk_log "no published digest for $tag yet (attempt $attempt)"

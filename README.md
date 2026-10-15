@@ -53,7 +53,9 @@ the same world variables as terraria. Workshop mods come from
 `/data/tModLoader/Worlds`. A `.tmod` uploaded by hand into
 `/data/tModLoader/Mods` stays enabled. The download is checked against the
 sha256 GitHub publishes; if GitHub's API does not answer, the install stops
-unless `DK_VAR_ALLOW_UNVERIFIED=true`.
+unless `DK_VAR_ALLOW_UNVERIFIED=true`. On a shared IP that has used up
+GitHub's anonymous limit (60 calls an hour), set `DK_GITHUB_TOKEN` to any
+token: it is only used for that lookup and never reaches the game.
 
 **valheim** — `DK_PORT_GAME` [2456] (query port is game + 1),
 `SERVER_NAME`, `WORLD_NAME` [Dedicated], `SERVER_PASS` (≥ 5 characters, not
@@ -137,7 +139,7 @@ nightly. CS2 needs about 60 GB of disk, so its smoke test only runs when the
 - Game processes, hooks and mods run as uid 1000; only `dk-entrypoint`
   starts as root, to prepare `/data`, `/server` and `/run/deploykit`.
   As root it ignores `DK_CONFIG` and `DK_RUN_DIR`.
-- The game process does not see `DK_CURSEFORGE_API_KEY`, `DK_MODS_*` or
+- The game process does not see `DK_CURSEFORGE_API_KEY`, `DK_GITHUB_TOKEN`, `DK_MODS_*` or
   `DK_MODPACK_*`: only the install and mods phases need them.
 - Mods and modpacks are only downloaded from fixed hosts, always checked
   against a hash, and never written outside the data directory or into

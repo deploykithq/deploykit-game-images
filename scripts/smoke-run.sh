@@ -30,6 +30,8 @@ hardening=(
     --pids-limit 2048
     --memory "${SMOKE_MEMORY:-3g}" --memory-swap "${SMOKE_MEMORY:-3g}"
 )
+# Passed by name, so the token never shows up in a process listing.
+[[ -z ${DK_GITHUB_TOKEN:-} ]] || hardening+=(-e DK_GITHUB_TOKEN)
 
 cleanup() {
     exec 3>&- 2>/dev/null || true
