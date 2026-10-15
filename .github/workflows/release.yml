@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       components:
-        description: "Space-separated: all, supervisor, base, terraria, minecraft-java, tmodloader, valheim, cs2"
+        description: "Space-separated: all, supervisor, base, terraria, minecraft-java, tmodloader, valheim, cs2, eco"
         required: true
         default: all
 

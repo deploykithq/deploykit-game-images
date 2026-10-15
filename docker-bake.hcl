@@ -28,7 +28,7 @@ group "bases" {
 }
 
 group "games" {
-  targets = ["terraria", "minecraft-java", "tmodloader", "valheim", "cs2"]
+  targets = ["terraria", "minecraft-java", "tmodloader", "valheim", "cs2", "eco"]
 }
 
 target "_common" {
@@ -117,4 +117,13 @@ target "cs2" {
   args       = { BASE = "dk-base" }
   platforms  = ["linux/amd64"]
   tags       = ["${REGISTRY}/game-cs2:edge"]
+}
+
+target "eco" {
+  inherits   = ["_common"]
+  dockerfile = "images/eco/Dockerfile"
+  contexts   = { dk-base = "target:base-steamcmd" }
+  args       = { BASE = "dk-base" }
+  platforms  = ["linux/amd64"]
+  tags       = ["${REGISTRY}/game-eco:edge"]
 }

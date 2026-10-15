@@ -1,0 +1,23 @@
+game: eco
+phases:
+  - name: install
+    run: [/opt/deploykit/hooks/install.sh]
+  - name: configure
+    run: [/opt/deploykit/hooks/configure.sh]
+start: [/opt/deploykit/hooks/start.sh]
+# Eco ignores stdin without a TTY. The supervisor forwards console lines over
+# RCON to 127.0.0.1:47002, with a password generated at every boot that never
+# leaves the container. Commands are Eco's chat commands without the slash
+# (`manage players`, `manage announce Hello`).
+console:
+  adapter: rcon
+  rcon:
+    port: 47002
+ready:
+  pattern: "Web Server now listening on:"
+stop:
+  # SIGTERM makes Eco save the world and shut its plugins down in order.
+  signal: SIGTERM
+  timeout: 80s
+verbs:
+  save: [manage save]

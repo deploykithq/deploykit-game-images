@@ -24,6 +24,7 @@
     "images/minecraft-java": { "component": "minecraft-java" },
     "images/tmodloader": { "component": "tmodloader" },
     "images/valheim": { "component": "valheim" },
-    "images/cs2": { "component": "cs2" }
+    "images/cs2": { "component": "cs2" },
+    "images/eco": { "component": "eco" }
   }
 }
