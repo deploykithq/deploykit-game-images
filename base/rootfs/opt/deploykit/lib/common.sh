@@ -69,3 +69,13 @@ dk_fetch() {
 dk_get() {
     curl -fsSL --retry 3 --retry-delay 2 -A "deploykithq/deploykit-game-images" "$1"
 }
+
+# dk_github_api PATH — GET api.github.com/PATH. Anonymous calls are limited to
+# 60 an hour per IP, which a shared IP (CI runners, NAT) runs out of; with
+# DK_GITHUB_TOKEN set (any token, no scopes needed) the limit is per token.
+dk_github_api() {
+    local auth=()
+    [[ -z ${DK_GITHUB_TOKEN:-} ]] || auth=(-H "Authorization: Bearer $DK_GITHUB_TOKEN")
+    curl -fsSL --retry 3 --retry-delay 2 -A "deploykithq/deploykit-game-images" \
+        -H "Accept: application/vnd.github+json" "${auth[@]}" "https://api.github.com/$1"
+}

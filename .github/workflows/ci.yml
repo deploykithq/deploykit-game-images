@@ -99,4 +99,8 @@ jobs:
           docker buildx bake ${{ matrix.target }} \
             --set '*.platform=linux/amd64' --set '${{ matrix.target }}.tags=dk-smoke:${{ matrix.game }}' --load
       - name: smoke
+        env:
+          # Runners share IPs, which exhaust GitHub's anonymous API limit
+          # (tModLoader looks up its release digest there).
+          DK_GITHUB_TOKEN: ${{ github.token }}
         run: bash images/${{ matrix.game }}/test/smoke.sh dk-smoke:${{ matrix.game }}

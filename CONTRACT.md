@@ -67,6 +67,7 @@ documented default of the image.
 | `DK_MODS_STEAM` | Comma-separated Workshop ids to keep downloaded. |
 | `DK_MODS_STEAM_ENABLED` | The subset of `DK_MODS_STEAM` to enable. |
 | `DK_CURSEFORGE_API_KEY` | Required only when a CurseForge list or modpack is set. |
+| `DK_GITHUB_TOKEN` | Optional. Images that look up a release on api.github.com (tModLoader) use it to avoid the anonymous rate limit of a shared IP. Any token, no scopes. |
 | `DK_MODPACK_SOURCE` | `modrinth` or `curseforge`. Empty: no modpack (an installed one is removed). |
 | `DK_MODPACK_PROJECT` / `DK_MODPACK_VERSION` | The pack, and its version/file id (empty: latest, pinned at install). |
 | `DK_STOP_TIMEOUT` | Seconds (or a Go duration) the game gets to stop gracefully. Keep it below Docker's `StopTimeout`. |
