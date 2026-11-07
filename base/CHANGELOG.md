@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2](https://github.com/deploykithq/deploykit-game-images/compare/base-v0.3.1...base-v0.3.2) (2026-11-07)
+
+
+### Bug Fixes
+
+* with an empty seed, the key in the config is cleared. ([#17](https://github.com/deploykithq/deploykit-game-images/issues/17)) ([1c4bf35](https://github.com/deploykithq/deploykit-game-images/commit/1c4bf35b50ae0012c6df7e0a891ffcda51c9469e))
+
 ## [0.3.1](https://github.com/deploykithq/deploykit-game-images/compare/base-v0.3.0...base-v0.3.1) (2026-10-15)
 
 
