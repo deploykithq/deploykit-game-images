@@ -128,6 +128,12 @@ signed with cosign (keyless). A `supervisor` or `base` release republishes
 every image. **Release → Run workflow** republishes by hand, for example `all`
 after an upstream security update.
 
+The DeployKit catalogue pins `X.Y` (`game-tmodloader:0.2`), so that tag must
+keep receiving fixes and features. Before 1.0, a `feat` bumps the patch and
+only a breaking change (`feat!`) bumps the minor; moving the catalogue to the
+new `X.Y` is then a deliberate change in `deploykit-templates`, and existing
+servers pick it up through DeployKit's **Update image**.
+
 CI runs the Go tests, govulncheck, shellcheck and hadolint, scans the base
 images with Trivy, builds everything, and smoke
 tests Terraria, Minecraft and tModLoader on every pull request. Valheim runs
