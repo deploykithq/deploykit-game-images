@@ -18,6 +18,8 @@ dk_set_prop "$props" motd "${DK_VAR_MOTD:-A Minecraft server on DeployKit}"
 # The console is the server's own stdin; RCON and query stay closed.
 dk_set_prop "$props" enable-rcon false
 dk_set_prop "$props" enable-query false
-# Only meaningful before the world exists, so never overwrite it with blank.
-[[ -n ${DK_VAR_SEED:-} ]] && dk_set_prop "$props" level-seed "$DK_VAR_SEED"
+# Only meaningful when the world is created. Blank is written as blank (the
+# server's own "random"), so the seed of a world DeployKit regenerated does
+# not come back.
+dk_set_prop "$props" level-seed "${DK_VAR_SEED:-}"
 exit 0
