@@ -35,6 +35,16 @@ dk_set_prop() {
     mv "$file.dk-tmp" "$file"
 }
 
+# dk_del_prop FILE KEY — remove every KEY=... line from a key=value file, if
+# the file exists. For a setting whose absence means something (no seed:
+# a random world), where KEY= with an empty value might not.
+dk_del_prop() {
+    local file=$1 key=$2
+    [[ -f $file ]] || return 0
+    K="$key" awk 'BEGIN { k = ENVIRON["K"] } index($0, k "=") != 1 { print }' "$file" >"$file.dk-tmp"
+    mv "$file.dk-tmp" "$file"
+}
+
 # dk_stamp NAME [VALUE] — read, or with VALUE write, a small piece of state
 # (e.g. the installed version) under DK_STATE_DIR/stamps.
 dk_stamp() {

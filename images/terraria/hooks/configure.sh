@@ -25,5 +25,12 @@ dk_set_prop "$cfg" maxplayers "$players"
 dk_set_prop "$cfg" port "${DK_PORT_GAME:-7777}"
 dk_set_prop "$cfg" password "${DK_VAR_PASSWORD:-}"
 [[ -n ${DK_VAR_MOTD:-} ]] && dk_set_prop "$cfg" motd "$DK_VAR_MOTD"
-[[ -n ${DK_VAR_SEED:-} ]] && dk_set_prop "$cfg" seed "$DK_VAR_SEED"
+# A seed only acts when the world is created. A blank one is removed, not
+# kept: after DeployKit regenerates the world it means "random", and the
+# previous seed must not come back.
+if [[ -n ${DK_VAR_SEED:-} ]]; then
+    dk_set_prop "$cfg" seed "$DK_VAR_SEED"
+else
+    dk_del_prop "$cfg" seed
+fi
 exit 0
